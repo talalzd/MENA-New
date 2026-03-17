@@ -1,4 +1,4 @@
-run = "pip install --user --break-system-packages -r requirements.txt && python app.py"
+run = "python -m venv venv && . venv/bin/activate && pip install -r requirements.txt && python app.py"
 language = "python3"
 entrypoint = "app.py"
 
@@ -6,4 +6,4 @@ entrypoint = "app.py"
 channel = "stable-24_05"
 
 [deployment]
-run = ["sh", "-c", "pip install --user --break-system-packages -r requirements.txt && python app.py"]
+run = ["sh", "-c", "python -m venv venv && . venv/bin/activate && pip install -r requirements.txt && python app.py"]
