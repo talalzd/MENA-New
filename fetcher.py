@@ -6,6 +6,7 @@ RSS parsing, Google News feeds, and consultation portal scrapers.
 import logging
 import re
 import threading
+import time
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -13,6 +14,8 @@ from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 import config
 import db
@@ -24,13 +27,25 @@ log = logging.getLogger(__name__)
 _refresh_lock = threading.Lock()
 _refresh_status = {"running": False, "progress": "", "result": None}
 
-# Browser-like session for scraping
+# Request timeouts (connect, read)
+REQUEST_TIMEOUT = (10, 30)
+
+# Browser-like session for scraping with retry
 SESSION = requests.Session()
+retry_strategy = Retry(
+    total=2,
+    backoff_factor=1,
+    status_forcelist=[429, 500, 502, 503, 504],
+    allowed_methods=["GET"],
+)
+adapter = HTTPAdapter(max_retries=retry_strategy)
+SESSION.mount("http://", adapter)
+SESSION.mount("https://", adapter)
 SESSION.headers.update({
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
+        "Chrome/124.0.0.0 Safari/537.36"
     ),
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9,ar;q=0.8",
@@ -140,15 +155,23 @@ def fetch_all_sources():
 
 def fetch_rss(source):
     """Parse an RSS/Atom feed and return list of update dicts."""
-    resp = SESSION.get(source["url"], timeout=15)
+    resp = SESSION.get(source["url"], timeout=REQUEST_TIMEOUT)
     resp.raise_for_status()
+
+    # Detect Google News consent/block page (returns HTML instead of XML)
+    content_type = resp.headers.get("Content-Type", "")
+    if "text/html" in content_type and "news.google.com" in source.get("url", ""):
+        raise ValueError("Google News returned HTML instead of RSS (likely IP-blocked or consent page)")
+
     items = []
 
     try:
         root = ET.fromstring(resp.content)
     except ET.ParseError:
-        log.warning(f"Failed to parse XML from {source['name']}")
-        return []
+        # Log a snippet of the response for debugging
+        snippet = resp.text[:200] if resp.text else "(empty)"
+        log.warning(f"Failed to parse XML from {source['name']}. Response snippet: {snippet}")
+        raise ValueError(f"Invalid XML response (Content-Type: {content_type})")
 
     # Handle both RSS and Atom feeds
     # RSS: root is <rss>, items are at channel/item
@@ -223,7 +246,7 @@ def fetch_scrape(source):
 def scrape_istitlaa(source):
     """Scrape Saudi NCC Istitlaa consultation portal."""
     try:
-        resp = SESSION.get(source["url"], timeout=15)
+        resp = SESSION.get(source["url"], timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         items = []
@@ -251,7 +274,7 @@ def scrape_istitlaa(source):
 def scrape_uae_consultations(source):
     """Scrape UAE government consultations page."""
     try:
-        resp = SESSION.get(source["url"], timeout=15)
+        resp = SESSION.get(source["url"], timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         items = []
@@ -284,7 +307,7 @@ def scrape_uae_consultations(source):
 def scrape_tdra(source):
     """Scrape TDRA consultations page."""
     try:
-        resp = SESSION.get(source["url"], timeout=15)
+        resp = SESSION.get(source["url"], timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         items = []
@@ -311,7 +334,7 @@ def scrape_tdra(source):
 def scrape_uae_legislation(source):
     """Scrape UAE Legislation portal for new laws/decrees."""
     try:
-        resp = SESSION.get(source["url"], timeout=15)
+        resp = SESSION.get(source["url"], timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         items = []
@@ -335,7 +358,7 @@ def scrape_uae_legislation(source):
 def scrape_errada(source):
     """Scrape Egypt's ERRADA regulatory portal."""
     try:
-        resp = SESSION.get(source["url"], timeout=15)
+        resp = SESSION.get(source["url"], timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         items = []
@@ -359,7 +382,7 @@ def scrape_errada(source):
 def scrape_egypt_laws(source):
     """Scrape Egypt's Laws Portal."""
     try:
-        resp = SESSION.get(source["url"], timeout=15)
+        resp = SESSION.get(source["url"], timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         items = []
@@ -383,7 +406,7 @@ def scrape_egypt_laws(source):
 def scrape_ntra(source):
     """Scrape Egypt's NTRA portal for telecom/ICT news."""
     try:
-        resp = SESSION.get(source["url"], timeout=15)
+        resp = SESSION.get(source["url"], timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         items = []

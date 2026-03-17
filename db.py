@@ -213,6 +213,15 @@ def add_source(data):
         conn.close()
 
 
+def get_source_by_id(source_id):
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM sources WHERE id = ?", (source_id,)).fetchone()
+    conn.close()
+    if row:
+        return dict(row)
+    return None
+
+
 def get_unread_count():
     conn = get_conn()
     row = conn.execute("SELECT COUNT(*) as cnt FROM updates WHERE is_read = 0").fetchone()

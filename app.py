@@ -137,6 +137,46 @@ def api_refresh_status():
     return jsonify(fetcher.get_refresh_status())
 
 
+@app.route("/api/refresh/errors")
+def api_refresh_errors():
+    """Return detailed error info from the last refresh."""
+    status = fetcher.get_refresh_status()
+    if status.get("result"):
+        return jsonify({"errors": status["result"].get("errors", [])})
+    return jsonify({"errors": []})
+
+
+@app.route("/api/test-source/<int:source_id>")
+def api_test_source(source_id):
+    """Test fetching a single source and return diagnostic info."""
+    import time
+    source = db.get_source_by_id(source_id)
+    if not source:
+        return jsonify({"error": "Source not found"}), 404
+
+    start = time.time()
+    try:
+        resp = fetcher.SESSION.get(source["url"], timeout=fetcher.REQUEST_TIMEOUT)
+        elapsed = round(time.time() - start, 2)
+        return jsonify({
+            "source": source["name"],
+            "url": source["url"],
+            "status_code": resp.status_code,
+            "content_type": resp.headers.get("Content-Type", ""),
+            "content_length": len(resp.content),
+            "elapsed_seconds": elapsed,
+            "response_snippet": resp.text[:500] if resp.text else "",
+        })
+    except Exception as e:
+        elapsed = round(time.time() - start, 2)
+        return jsonify({
+            "source": source["name"],
+            "url": source["url"],
+            "error": str(e),
+            "elapsed_seconds": elapsed,
+        })
+
+
 @app.route("/api/star/<int:update_id>", methods=["POST"])
 def api_star(update_id):
     new_state = db.toggle_star(update_id)

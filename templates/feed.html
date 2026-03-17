@@ -124,9 +124,13 @@ function pollRefreshStatus() {
                 let msg = `Done! ${res.new} new updates found (${res.fetched} items checked).`;
                 if (res.errors && res.errors.length > 0) {
                     msg += ` ${res.errors.length} source(s) had errors.`;
+                    msg += `\n\nError details:\n` + res.errors.join('\n');
                 }
                 status.textContent = msg;
-                status.className = 'refresh-status refresh-success';
+                status.style.whiteSpace = 'pre-wrap';
+                status.className = res.errors && res.errors.length > 0 && res.fetched === 0
+                    ? 'refresh-status refresh-error'
+                    : 'refresh-status refresh-success';
                 btn.textContent = 'Refresh Feeds';
                 btn.disabled = false;
                 btn.removeAttribute('aria-busy');
