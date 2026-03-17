@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Consultations - MENA Policy Monitor{% endblock %}
+
+{% block content %}
+<h2>Active Consultations</h2>
+
+{% if active %}
+<div class="updates-list">
+    {% for u in active %}
+    <article class="update-card consultation-card">
+        <div class="update-header">
+            <a href="{{ u.url }}" target="_blank" rel="noopener" dir="auto" class="update-title">{{ u.title }}</a>
+            <div class="update-actions">
+                <button class="btn-icon star-btn {% if u.is_starred %}starred{% endif %}"
+                        onclick="toggleStar({{ u.id }}, this)">
+                    {{ '&#9733;' if u.is_starred else '&#9734;' }}
+                </button>
+            </div>
+        </div>
+        <div class="update-meta">
+            <span class="tag source-tag">{{ u.source_name }}</span>
+            {% if u.country %}
+            <span class="tag country-tag">{{ country_flags.get(u.country, '') }} {{ u.country }}</span>
+            {% endif %}
+            {% if u.issuing_authority %}
+            <span class="tag">{{ u.issuing_authority }}</span>
+            {% endif %}
+            <span class="tag consultation-tag">CONSULTATION</span>
+        </div>
+        {% if u.consultation_deadline %}
+        <div class="deadline-info">
+            <strong>Deadline:</strong> {{ u.consultation_deadline }}
+            <span class="deadline-countdown">({{ u.consultation_deadline|daysuntil }})</span>
+        </div>
+        {% endif %}
+        {% if u.summary %}
+        <p class="update-summary" dir="auto">{{ u.summary[:300] }}</p>
+        {% endif %}
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<p>No active consultations found. Use <a href="{{ url_for('add_clip') }}">Add Clip</a> to manually add consultations you find.</p>
+{% endif %}
+
+{% if expired %}
+<h2>Expired</h2>
+<div class="updates-list expired-section">
+    {% for u in expired %}
+    <article class="update-card consultation-card expired">
+        <div class="update-header">
+            <a href="{{ u.url }}" target="_blank" rel="noopener" dir="auto" class="update-title">{{ u.title }}</a>
+        </div>
+        <div class="update-meta">
+            <span class="tag source-tag">{{ u.source_name }}</span>
+            {% if u.country %}
+            <span class="tag country-tag">{{ country_flags.get(u.country, '') }} {{ u.country }}</span>
+            {% endif %}
+            {% if u.consultation_deadline %}
+            <span class="tag expired-tag">Expired {{ u.consultation_deadline }}</span>
+            {% endif %}
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleStar(id, btn) {
+    fetch('/api/star/' + id, {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            btn.innerHTML = data.is_starred ? '&#9733;' : '&#9734;';
+            btn.classList.toggle('starred', data.is_starred);
+        });
+}
+</script>
+{% endblock %}

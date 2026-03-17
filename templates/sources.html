@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Sources - MENA Policy Monitor{% endblock %}
+
+{% block content %}
+<h2>Sources</h2>
+<p>Manage RSS feeds, Google News queries, and scrape targets.</p>
+
+<div class="table-responsive">
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Country</th>
+                <th>Topic</th>
+                <th>Last Fetched</th>
+                <th>Active</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in sources %}
+            <tr class="{% if not s.active %}source-disabled{% endif %}">
+                <td>
+                    <strong>{{ s.name }}</strong>
+                    <br><small class="source-url" title="{{ s.url }}">{{ s.url[:60] }}{% if s.url|length > 60 %}...{% endif %}</small>
+                </td>
+                <td><span class="tag type-{{ s.source_type }}">{{ s.source_type }}</span></td>
+                <td>{% if s.country %}{{ country_flags.get(s.country, '') }} {{ s.country }}{% else %}&mdash;{% endif %}</td>
+                <td>{{ s.default_topic or '&mdash;' }}</td>
+                <td>{{ s.last_fetched|timeago if s.last_fetched else 'Never' }}</td>
+                <td>
+                    <button class="btn-sm {% if s.active %}contrast{% else %}outline{% endif %}"
+                            onclick="toggleSource({{ s.id }}, this)">
+                        {{ 'On' if s.active else 'Off' }}
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<h3>Add New Source</h3>
+<form method="post" action="{{ url_for('sources_add') }}">
+    <div class="grid">
+        <label>
+            Name <span class="required">*</span>
+            <input type="text" name="name" required placeholder="Source name">
+        </label>
+        <label>
+            URL <span class="required">*</span>
+            <input type="url" name="url" required placeholder="RSS feed or page URL">
+        </label>
+    </div>
+    <div class="grid">
+        <label>
+            Type
+            <select name="source_type">
+                <option value="rss">RSS Feed</option>
+                <option value="google_news">Google News Query</option>
+                <option value="scrape">Web Scrape</option>
+            </select>
+        </label>
+        <label>
+            Country
+            <select name="country">
+                <option value="">-- Any --</option>
+                {% for c in countries %}
+                <option value="{{ c }}">{{ country_flags.get(c, '') }} {{ c }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Default Topic
+            <select name="default_topic">
+                <option value="">-- None --</option>
+                {% for t in topics %}
+                <option value="{{ t }}">{{ t }}</option>
+                {% endfor %}
+            </select>
+        </label>
+    </div>
+    <button type="submit">Add Source</button>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleSource(id, btn) {
+    fetch('/sources/toggle/' + id, {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            btn.textContent = data.active ? 'On' : 'Off';
+            btn.className = data.active ? 'btn-sm contrast' : 'btn-sm outline';
+            btn.closest('tr').classList.toggle('source-disabled', !data.active);
+        });
+}
+</script>
+{% endblock %}

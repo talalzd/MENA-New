@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Feed - MENA Policy Monitor{% endblock %}
+
+{% block content %}
+<div class="filter-bar">
+    <form method="get" action="{{ url_for('feed') }}" class="filter-form">
+        <select name="country" aria-label="Country">
+            <option value="">All Countries</option>
+            {% for c in countries %}
+            <option value="{{ c }}" {% if selected_country == c %}selected{% endif %}>
+                {{ country_flags.get(c, '') }} {{ c }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <select name="topic" aria-label="Topic">
+            <option value="">All Topics</option>
+            {% for t in topics %}
+            <option value="{{ t }}" {% if selected_topic == t %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+        </select>
+
+        <label class="filter-checkbox">
+            <input type="checkbox" name="unread" value="1" {% if unread_filter %}checked{% endif %}>
+            Unread only
+        </label>
+
+        <button type="submit" class="outline">Filter</button>
+        <button type="button" id="refresh-btn" class="contrast" onclick="refreshFeeds()">Refresh Feeds</button>
+    </form>
+</div>
+
+<div id="refresh-status" class="refresh-status" style="display:none;"></div>
+
+<p class="update-count">{{ updates|length }} updates shown &middot; {{ unread_count }} unread total</p>
+
+{% if updates %}
+<div class="updates-list">
+    {% for u in updates %}
+    <article class="update-card {% if not u.is_read %}unread{% endif %}" id="update-{{ u.id }}">
+        <div class="update-header">
+            <a href="{{ u.url }}" target="_blank" rel="noopener" dir="auto" class="update-title"
+               onclick="markRead({{ u.id }})">{{ u.title }}</a>
+            <div class="update-actions">
+                <button class="btn-icon star-btn {% if u.is_starred %}starred{% endif %}"
+                        onclick="toggleStar({{ u.id }}, this)" title="Star">
+                    {{ '&#9733;' if u.is_starred else '&#9734;' }}
+                </button>
+                <button class="btn-icon read-btn" onclick="toggleRead({{ u.id }}, this)" title="Toggle read">
+                    {{ '&#9679;' if not u.is_read else '&#9675;' }}
+                </button>
+            </div>
+        </div>
+        <div class="update-meta">
+            <span class="tag source-tag">{{ u.source_name }}</span>
+            {% if u.country %}
+            <span class="tag country-tag">{{ country_flags.get(u.country, '') }} {{ u.country }}</span>
+            {% endif %}
+            {% if u.topic %}
+            <span class="tag topic-tag">{{ u.topic }}</span>
+            {% endif %}
+            {% if u.is_consultation %}
+            <span class="tag consultation-tag">CONSULTATION</span>
+            {% endif %}
+            <span class="update-date">{{ u.published_date|timeago }}</span>
+        </div>
+        {% if u.summary %}
+        <p class="update-summary" dir="auto">{{ u.summary[:200] }}{% if u.summary|length > 200 %}...{% endif %}</p>
+        {% endif %}
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<p>No updates found. Try adjusting filters or click <strong>Refresh Feeds</strong> to fetch new content.</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function refreshFeeds() {
+    const btn = document.getElementById('refresh-btn');
+    const status = document.getElementById('refresh-status');
+    btn.disabled = true;
+    btn.textContent = 'Refreshing...';
+    btn.setAttribute('aria-busy', 'true');
+    status.style.display = 'block';
+    status.textContent = 'Fetching from all sources...';
+    status.className = 'refresh-status';
+
+    fetch('/api/refresh', {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            let msg = `Done! ${data.new} new updates found (${data.fetched} items checked).`;
+            if (data.errors && data.errors.length > 0) {
+                msg += ` ${data.errors.length} source(s) had errors.`;
+            }
+            status.textContent = msg;
+            status.className = 'refresh-status refresh-success';
+            btn.textContent = 'Refresh Feeds';
+            btn.disabled = false;
+            btn.removeAttribute('aria-busy');
+            if (data.new > 0) {
+                setTimeout(() => location.reload(), 1500);
+            }
+        })
+        .catch(err => {
+            status.textContent = 'Refresh failed: ' + err.message;
+            status.className = 'refresh-status refresh-error';
+            btn.textContent = 'Refresh Feeds';
+            btn.disabled = false;
+            btn.removeAttribute('aria-busy');
+        });
+}
+
+function toggleStar(id, btn) {
+    fetch('/api/star/' + id, {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            btn.innerHTML = data.is_starred ? '&#9733;' : '&#9734;';
+            btn.classList.toggle('starred', data.is_starred);
+        });
+}
+
+function toggleRead(id, btn) {
+    fetch('/api/read/' + id, {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            btn.innerHTML = data.is_read ? '&#9675;' : '&#9679;';
+            const card = document.getElementById('update-' + id);
+            card.classList.toggle('unread', !data.is_read);
+        });
+}
+
+function markRead(id) {
+    fetch('/api/read/' + id, {method: 'POST'});
+    const card = document.getElementById('update-' + id);
+    if (card) card.classList.remove('unread');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Starred - MENA Policy Monitor{% endblock %}
+
+{% block content %}
+<h2>Starred Updates</h2>
+
+{% if updates %}
+<p class="update-count">{{ updates|length }} starred items &mdash; your briefing list</p>
+<div class="updates-list">
+    {% for u in updates %}
+    <article class="update-card {% if not u.is_read %}unread{% endif %}" id="update-{{ u.id }}">
+        <div class="update-header">
+            <a href="{{ u.url }}" target="_blank" rel="noopener" dir="auto" class="update-title">{{ u.title }}</a>
+            <div class="update-actions">
+                <button class="btn-icon star-btn starred"
+                        onclick="toggleStar({{ u.id }}, this)">&#9733;</button>
+            </div>
+        </div>
+        <div class="update-meta">
+            <span class="tag source-tag">{{ u.source_name }}</span>
+            {% if u.country %}
+            <span class="tag country-tag">{{ country_flags.get(u.country, '') }} {{ u.country }}</span>
+            {% endif %}
+            {% if u.topic %}
+            <span class="tag topic-tag">{{ u.topic }}</span>
+            {% endif %}
+            {% if u.is_consultation %}
+            <span class="tag consultation-tag">CONSULTATION</span>
+            {% endif %}
+            <span class="update-date">{{ u.published_date|timeago }}</span>
+        </div>
+        {% if u.summary %}
+        <p class="update-summary" dir="auto">{{ u.summary[:200] }}{% if u.summary|length > 200 %}...{% endif %}</p>
+        {% endif %}
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<p>No starred items yet. Star updates from the feed to build your briefing list.</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleStar(id, btn) {
+    fetch('/api/star/' + id, {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            if (!data.is_starred) {
+                document.getElementById('update-' + id).remove();
+            }
+        });
+}
+</script>
+{% endblock %}

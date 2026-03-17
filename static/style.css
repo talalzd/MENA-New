@@ -1,0 +1,305 @@
+/* MENA Policy Monitor — Custom Styles */
+
+/* ---------- Filter Bar ---------- */
+.filter-bar {
+    margin-bottom: 1rem;
+}
+
+.filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.filter-form select,
+.filter-form button {
+    margin-bottom: 0;
+}
+
+.filter-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+.filter-checkbox input {
+    margin: 0;
+}
+
+/* ---------- Update Cards ---------- */
+.updates-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.update-card {
+    padding: 0.75rem 1rem;
+    margin: 0;
+    border-left: 3px solid transparent;
+}
+
+.update-card.unread {
+    border-left-color: var(--pico-primary);
+    background: var(--pico-card-background-color);
+}
+
+.update-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.update-title {
+    font-weight: 600;
+    text-decoration: none;
+    line-height: 1.3;
+    flex: 1;
+}
+
+.unread .update-title {
+    font-weight: 700;
+}
+
+.update-actions {
+    display: flex;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.update-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+    align-items: center;
+}
+
+.update-summary {
+    margin-top: 0.4rem;
+    margin-bottom: 0;
+    font-size: 0.9em;
+    opacity: 0.85;
+    line-height: 1.4;
+}
+
+.update-date {
+    font-size: 0.8em;
+    opacity: 0.6;
+}
+
+.update-count {
+    font-size: 0.9em;
+    opacity: 0.7;
+    margin-bottom: 0.75rem;
+}
+
+/* ---------- Tags / Badges ---------- */
+.tag {
+    display: inline-block;
+    padding: 0.1em 0.5em;
+    border-radius: 0.25rem;
+    font-size: 0.75em;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.source-tag {
+    background: var(--pico-secondary-background);
+    color: var(--pico-secondary-inverse);
+}
+
+.country-tag {
+    background: #e8f0fe;
+    color: #1a56db;
+}
+
+[data-theme="dark"] .country-tag {
+    background: #1e3a5f;
+    color: #93bbfc;
+}
+
+.topic-tag {
+    background: #e6f4ea;
+    color: #137333;
+}
+
+[data-theme="dark"] .topic-tag {
+    background: #1e3a2f;
+    color: #81c995;
+}
+
+.consultation-tag {
+    background: #fce8e6;
+    color: #c5221f;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+[data-theme="dark"] .consultation-tag {
+    background: #5f1e1e;
+    color: #f28b82;
+}
+
+.expired-tag {
+    background: #f1f1f1;
+    color: #666;
+}
+
+.badge {
+    display: inline-block;
+    background: var(--pico-primary);
+    color: var(--pico-primary-inverse);
+    border-radius: 999px;
+    padding: 0.1em 0.5em;
+    font-size: 0.75em;
+    font-weight: 700;
+    margin-left: 0.25rem;
+    vertical-align: middle;
+}
+
+/* Source type badges */
+.type-rss { background: #e8f5e9; color: #2e7d32; }
+.type-scrape { background: #fff3e0; color: #e65100; }
+.type-google_news { background: #e3f2fd; color: #1565c0; }
+
+[data-theme="dark"] .type-rss { background: #1b3a1b; color: #66bb6a; }
+[data-theme="dark"] .type-scrape { background: #3e2723; color: #ffb74d; }
+[data-theme="dark"] .type-google_news { background: #0d2137; color: #64b5f6; }
+
+/* ---------- Buttons ---------- */
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+    font-size: 1.2em;
+    line-height: 1;
+    border-radius: 0.25rem;
+    color: var(--pico-muted-color);
+    margin: 0;
+    width: auto;
+}
+
+.btn-icon:hover {
+    background: var(--pico-secondary-background);
+}
+
+.star-btn.starred {
+    color: #f9a825;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8em;
+}
+
+/* ---------- Refresh Status ---------- */
+.refresh-status {
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    margin-bottom: 1rem;
+    font-size: 0.9em;
+    background: var(--pico-secondary-background);
+}
+
+.refresh-success {
+    background: #e6f4ea;
+    color: #137333;
+}
+
+.refresh-error {
+    background: #fce8e6;
+    color: #c5221f;
+}
+
+[data-theme="dark"] .refresh-success { background: #1e3a2f; color: #81c995; }
+[data-theme="dark"] .refresh-error { background: #5f1e1e; color: #f28b82; }
+
+/* ---------- Flash Messages ---------- */
+.flash {
+    padding: 0.75rem 1rem;
+    border-radius: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+.flash-success { background: #e6f4ea; color: #137333; }
+.flash-error { background: #fce8e6; color: #c5221f; }
+
+[data-theme="dark"] .flash-success { background: #1e3a2f; color: #81c995; }
+[data-theme="dark"] .flash-error { background: #5f1e1e; color: #f28b82; }
+
+/* ---------- Consultations ---------- */
+.consultation-card {
+    border-left-color: #c5221f;
+}
+
+.deadline-info {
+    margin-top: 0.4rem;
+    font-size: 0.9em;
+}
+
+.deadline-countdown {
+    color: #c5221f;
+    font-weight: 600;
+}
+
+.expired-section .update-card,
+.update-card.expired {
+    opacity: 0.5;
+}
+
+/* ---------- Sources ---------- */
+.source-url {
+    color: var(--pico-muted-color);
+    word-break: break-all;
+}
+
+.source-disabled {
+    opacity: 0.5;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* ---------- Required field marker ---------- */
+.required {
+    color: #c5221f;
+}
+
+/* ---------- RTL support ---------- */
+[dir="auto"] {
+    unicode-bidi: plaintext;
+}
+
+/* ---------- Nav active state ---------- */
+nav a.active {
+    font-weight: 700;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+    .filter-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filter-form select,
+    .filter-form button {
+        width: 100%;
+    }
+
+    .update-header {
+        flex-direction: column;
+    }
+
+    .update-actions {
+        align-self: flex-end;
+    }
+}

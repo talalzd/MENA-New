@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MENA Policy Monitor{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="container">
+        <nav>
+            <ul>
+                <li><strong>MENA Policy Monitor</strong></li>
+            </ul>
+            <ul>
+                <li><a href="{{ url_for('feed') }}" {% if request.endpoint == 'feed' %}class="active"{% endif %}>
+                    Feed {% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}
+                </a></li>
+                <li><a href="{{ url_for('consultations') }}" {% if request.endpoint == 'consultations' %}class="active"{% endif %}>Consultations</a></li>
+                <li><a href="{{ url_for('starred') }}" {% if request.endpoint == 'starred' %}class="active"{% endif %}>Starred</a></li>
+                <li><a href="{{ url_for('add_clip') }}" {% if request.endpoint == 'add_clip' %}class="active"{% endif %}>Add Clip</a></li>
+                <li><a href="{{ url_for('sources') }}" {% if request.endpoint == 'sources' %}class="active"{% endif %}>Sources</a></li>
+                <li><button id="theme-toggle" class="outline secondary btn-sm" onclick="toggleTheme()">Dark</button></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="flash flash-{{ category }}" role="alert">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="container">
+        <small>MENA Policy & Regulatory Monitor &mdash; Local-first, no external services</small>
+    </footer>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            document.getElementById('theme-toggle').textContent = next === 'dark' ? 'Light' : 'Dark';
+        }
+
+        // Restore saved theme
+        (function() {
+            const saved = localStorage.getItem('theme');
+            if (saved) {
+                document.documentElement.setAttribute('data-theme', saved);
+                const btn = document.getElementById('theme-toggle');
+                if (btn) btn.textContent = saved === 'dark' ? 'Light' : 'Dark';
+            }
+        })();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
