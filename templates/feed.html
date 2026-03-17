@@ -90,18 +90,15 @@ function refreshFeeds() {
     fetch('/api/refresh', {method: 'POST'})
         .then(r => r.json())
         .then(data => {
-            let msg = `Done! ${data.new} new updates found (${data.fetched} items checked).`;
-            if (data.errors && data.errors.length > 0) {
-                msg += ` ${data.errors.length} source(s) had errors.`;
+            if (data.started === false) {
+                status.textContent = data.message;
+                status.className = 'refresh-status';
+                btn.textContent = 'Refresh Feeds';
+                btn.disabled = false;
+                btn.removeAttribute('aria-busy');
+                return;
             }
-            status.textContent = msg;
-            status.className = 'refresh-status refresh-success';
-            btn.textContent = 'Refresh Feeds';
-            btn.disabled = false;
-            btn.removeAttribute('aria-busy');
-            if (data.new > 0) {
-                setTimeout(() => location.reload(), 1500);
-            }
+            pollRefreshStatus();
         })
         .catch(err => {
             status.textContent = 'Refresh failed: ' + err.message;
@@ -109,6 +106,43 @@ function refreshFeeds() {
             btn.textContent = 'Refresh Feeds';
             btn.disabled = false;
             btn.removeAttribute('aria-busy');
+        });
+}
+
+function pollRefreshStatus() {
+    const btn = document.getElementById('refresh-btn');
+    const status = document.getElementById('refresh-status');
+
+    fetch('/api/refresh/status')
+        .then(r => r.json())
+        .then(data => {
+            if (data.running) {
+                status.textContent = data.progress || 'Working...';
+                setTimeout(pollRefreshStatus, 2000);
+            } else if (data.result) {
+                const res = data.result;
+                let msg = `Done! ${res.new} new updates found (${res.fetched} items checked).`;
+                if (res.errors && res.errors.length > 0) {
+                    msg += ` ${res.errors.length} source(s) had errors.`;
+                }
+                status.textContent = msg;
+                status.className = 'refresh-status refresh-success';
+                btn.textContent = 'Refresh Feeds';
+                btn.disabled = false;
+                btn.removeAttribute('aria-busy');
+                if (res.new > 0) {
+                    setTimeout(() => location.reload(), 1500);
+                }
+            } else {
+                status.textContent = 'Refresh complete.';
+                status.className = 'refresh-status refresh-success';
+                btn.textContent = 'Refresh Feeds';
+                btn.disabled = false;
+                btn.removeAttribute('aria-busy');
+            }
+        })
+        .catch(() => {
+            setTimeout(pollRefreshStatus, 3000);
         });
 }
 

@@ -5,7 +5,9 @@ RSS parsing, Google News feeds, and consultation portal scrapers.
 
 import logging
 import re
+import threading
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
 import requests
@@ -17,6 +19,10 @@ import db
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
+
+# Background refresh state
+_refresh_lock = threading.Lock()
+_refresh_status = {"running": False, "progress": "", "result": None}
 
 # Browser-like session for scraping
 SESSION = requests.Session()
@@ -32,43 +38,109 @@ SESSION.headers.update({
 })
 
 
+def get_refresh_status():
+    """Return current refresh status for polling."""
+    with _refresh_lock:
+        return dict(_refresh_status)
+
+
+def start_refresh():
+    """Start a background refresh. Returns immediately."""
+    with _refresh_lock:
+        if _refresh_status["running"]:
+            return {"started": False, "message": "Refresh already in progress"}
+        _refresh_status["running"] = True
+        _refresh_status["progress"] = "Starting..."
+        _refresh_status["result"] = None
+
+    thread = threading.Thread(target=_run_refresh, daemon=True)
+    thread.start()
+    return {"started": True, "message": "Refresh started"}
+
+
+def _fetch_single_source(src):
+    """Fetch a single source. Returns (fetched_count, new_count, error_or_None)."""
+    try:
+        if src["source_type"] == "rss":
+            items = fetch_rss(src)
+        elif src["source_type"] == "scrape":
+            items = fetch_scrape(src)
+        else:
+            items = fetch_rss(src)
+
+        new_count = 0
+        for item in items:
+            changes = db.insert_update(item)
+            new_count += changes
+
+        db.update_source_last_fetched(src["id"])
+        log.info(f"[{src['name']}] fetched={len(items)} new={new_count}")
+        return len(items), new_count, None
+
+    except Exception as e:
+        err_msg = f"{src['name']}: {e}"
+        log.warning(f"Error fetching {src['name']}: {e}")
+        return 0, 0, err_msg
+
+
+def _run_refresh():
+    """Background worker: fetch all sources in parallel."""
+    try:
+        sources = db.get_sources(active_only=True)
+        total_fetched = 0
+        total_new = 0
+        errors = []
+        done_count = 0
+        total_count = len(sources)
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = {executor.submit(_fetch_single_source, src): src for src in sources}
+            for future in as_completed(futures):
+                fetched, new, error = future.result()
+                total_fetched += fetched
+                total_new += new
+                if error:
+                    errors.append(error)
+                done_count += 1
+                with _refresh_lock:
+                    _refresh_status["progress"] = f"Fetched {done_count}/{total_count} sources..."
+
+        result = {"fetched": total_fetched, "new": total_new, "errors": errors}
+        with _refresh_lock:
+            _refresh_status["result"] = result
+            _refresh_status["running"] = False
+            _refresh_status["progress"] = "Done"
+
+    except Exception as e:
+        log.error(f"Background refresh failed: {e}")
+        with _refresh_lock:
+            _refresh_status["result"] = {"fetched": 0, "new": 0, "errors": [str(e)]}
+            _refresh_status["running"] = False
+            _refresh_status["progress"] = "Failed"
+
+
 def fetch_all_sources():
-    """Fetch from all active sources. Returns summary dict."""
+    """Fetch from all active sources (parallel). Returns summary dict."""
     sources = db.get_sources(active_only=True)
     total_fetched = 0
     total_new = 0
     errors = []
 
-    for src in sources:
-        try:
-            if src["source_type"] == "rss":
-                items = fetch_rss(src)
-            elif src["source_type"] == "scrape":
-                items = fetch_scrape(src)
-            else:
-                items = fetch_rss(src)
-
-            new_count = 0
-            for item in items:
-                changes = db.insert_update(item)
-                new_count += changes
-
-            total_fetched += len(items)
-            total_new += new_count
-            db.update_source_last_fetched(src["id"])
-            log.info(f"[{src['name']}] fetched={len(items)} new={new_count}")
-
-        except Exception as e:
-            err_msg = f"{src['name']}: {e}"
-            errors.append(err_msg)
-            log.warning(f"Error fetching {src['name']}: {e}")
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {executor.submit(_fetch_single_source, src): src for src in sources}
+        for future in as_completed(futures):
+            fetched, new, error = future.result()
+            total_fetched += fetched
+            total_new += new
+            if error:
+                errors.append(error)
 
     return {"fetched": total_fetched, "new": total_new, "errors": errors}
 
 
 def fetch_rss(source):
     """Parse an RSS/Atom feed and return list of update dicts."""
-    resp = SESSION.get(source["url"], timeout=30)
+    resp = SESSION.get(source["url"], timeout=15)
     resp.raise_for_status()
     items = []
 
@@ -151,7 +223,7 @@ def fetch_scrape(source):
 def scrape_istitlaa(source):
     """Scrape Saudi NCC Istitlaa consultation portal."""
     try:
-        resp = SESSION.get(source["url"], timeout=30)
+        resp = SESSION.get(source["url"], timeout=15)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         items = []
@@ -179,7 +251,7 @@ def scrape_istitlaa(source):
 def scrape_uae_consultations(source):
     """Scrape UAE government consultations page."""
     try:
-        resp = SESSION.get(source["url"], timeout=30)
+        resp = SESSION.get(source["url"], timeout=15)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         items = []
@@ -212,7 +284,7 @@ def scrape_uae_consultations(source):
 def scrape_tdra(source):
     """Scrape TDRA consultations page."""
     try:
-        resp = SESSION.get(source["url"], timeout=30)
+        resp = SESSION.get(source["url"], timeout=15)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         items = []
@@ -239,7 +311,7 @@ def scrape_tdra(source):
 def scrape_uae_legislation(source):
     """Scrape UAE Legislation portal for new laws/decrees."""
     try:
-        resp = SESSION.get(source["url"], timeout=30)
+        resp = SESSION.get(source["url"], timeout=15)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         items = []
@@ -263,7 +335,7 @@ def scrape_uae_legislation(source):
 def scrape_errada(source):
     """Scrape Egypt's ERRADA regulatory portal."""
     try:
-        resp = SESSION.get(source["url"], timeout=30)
+        resp = SESSION.get(source["url"], timeout=15)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         items = []
@@ -287,7 +359,7 @@ def scrape_errada(source):
 def scrape_egypt_laws(source):
     """Scrape Egypt's Laws Portal."""
     try:
-        resp = SESSION.get(source["url"], timeout=30)
+        resp = SESSION.get(source["url"], timeout=15)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         items = []
@@ -311,7 +383,7 @@ def scrape_egypt_laws(source):
 def scrape_ntra(source):
     """Scrape Egypt's NTRA portal for telecom/ICT news."""
     try:
-        resp = SESSION.get(source["url"], timeout=30)
+        resp = SESSION.get(source["url"], timeout=15)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
         items = []

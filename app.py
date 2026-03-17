@@ -126,8 +126,15 @@ def sources_toggle(source_id):
 
 @app.route("/api/refresh", methods=["POST"])
 def api_refresh():
-    result = fetcher.fetch_all_sources()
+    """Start a background refresh (returns immediately)."""
+    result = fetcher.start_refresh()
     return jsonify(result)
+
+
+@app.route("/api/refresh/status")
+def api_refresh_status():
+    """Poll for refresh progress."""
+    return jsonify(fetcher.get_refresh_status())
 
 
 @app.route("/api/star/<int:update_id>", methods=["POST"])
