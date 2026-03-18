@@ -92,28 +92,20 @@ def _gnews_rss(query):
 
 # ---------- Pre-populated sources ----------
 DEFAULT_SOURCES = [
-    # --- Tier 0: Consultation Portals (scrape) ---
-    {"name": "Istitlaa", "url": "https://istitlaa.ncc.gov.sa/ar/Pages/default.aspx",
-     "source_type": "scrape", "country": "Saudi Arabia", "default_topic": "Technology Regulation"},
-    {"name": "UAE Consultations", "url": "https://u.ae/en/participate/consultations",
-     "source_type": "scrape", "country": "UAE", "default_topic": "Technology Regulation"},
-    {"name": "TDRA Consultations", "url": "https://tdra.gov.ae/en/Participation/consultations",
-     "source_type": "scrape", "country": "UAE", "default_topic": "Technology Regulation"},
-    {"name": "UAE Legislation", "url": "https://uaelegislation.gov.ae/en",
-     "source_type": "scrape", "country": "UAE", "default_topic": "Technology Regulation"},
-    {"name": "ERRADA", "url": "https://www.errada.gov.eg/",
-     "source_type": "scrape", "country": "Egypt", "default_topic": "Technology Regulation"},
-    {"name": "Egypt Laws Portal", "url": "https://www.egypt.gov.eg/english/laws/default.aspx",
-     "source_type": "scrape", "country": "Egypt", "default_topic": "Technology Regulation"},
-    {"name": "NTRA Egypt", "url": "https://www.tra.gov.eg/en/",
-     "source_type": "scrape", "country": "Egypt", "default_topic": "Technology Regulation"},
+    # --- Tier 0: Consultation Portals (via Google News) ---
+    # Direct scraping is unreachable from cloud hosts; use Google News as proxy
+    {"name": "GN: Saudi consultations", "url": _gnews_rss("Saudi Arabia public consultation regulation NCC Istitlaa"),
+     "source_type": "rss", "country": "Saudi Arabia", "default_topic": "Technology Regulation"},
+    {"name": "GN: UAE consultations", "url": _gnews_rss("UAE public consultation regulation TDRA"),
+     "source_type": "rss", "country": "UAE", "default_topic": "Technology Regulation"},
+    {"name": "GN: UAE legislation", "url": _gnews_rss("UAE new law decree legislation"),
+     "source_type": "rss", "country": "UAE", "default_topic": "Technology Regulation"},
+    {"name": "GN: Egypt regulation", "url": _gnews_rss("Egypt regulation NTRA ERRADA consultation"),
+     "source_type": "rss", "country": "Egypt", "default_topic": "Technology Regulation"},
 
-    # --- Tier 1: Government News Agencies (RSS) ---
-    {"name": "SPA - All News", "url": "https://www.spa.gov.sa/rss.xml",
-     "source_type": "rss", "country": "Saudi Arabia", "default_topic": None},
-    {"name": "SPA - Economic", "url": "https://www.spa.gov.sa/rss5.xml",
-     "source_type": "rss", "country": "Saudi Arabia", "default_topic": "Foreign Direct Investment"},
-    {"name": "SPA - Political", "url": "https://www.spa.gov.sa/rss4.xml",
+    # --- Tier 1: Government News Agencies (via Google News) ---
+    # SPA no longer serves RSS feeds; use Google News site-search instead
+    {"name": "SPA via Google News", "url": _gnews_rss("site:spa.gov.sa"),
      "source_type": "rss", "country": "Saudi Arabia", "default_topic": None},
     {"name": "WAM via Google News", "url": _gnews_rss("site:wam.ae"),
      "source_type": "rss", "country": "UAE", "default_topic": None},
@@ -167,8 +159,8 @@ DEFAULT_SOURCES = [
     {"name": "GN: Egypt ICT regulation", "url": _gnews_rss("Egypt ICT regulation NTRA"),
      "source_type": "rss", "country": "Egypt", "default_topic": "Technology Regulation"},
 
-    # --- Tier 3: English outlets ---
-    {"name": "Arab News", "url": "https://www.arabnews.com/rss.xml",
+    # --- Tier 3: English outlets (via Google News) ---
+    {"name": "Arab News via Google News", "url": _gnews_rss("site:arabnews.com Saudi regulation policy"),
      "source_type": "rss", "country": "Saudi Arabia", "default_topic": None},
     {"name": "Al-Monitor MENA", "url": _gnews_rss("site:al-monitor.com MENA policy regulation"),
      "source_type": "rss", "country": None, "default_topic": None},

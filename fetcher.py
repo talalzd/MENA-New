@@ -158,10 +158,10 @@ def fetch_rss(source):
     resp = SESSION.get(source["url"], timeout=REQUEST_TIMEOUT)
     resp.raise_for_status()
 
-    # Detect Google News consent/block page (returns HTML instead of XML)
+    # Detect when an RSS source returns HTML instead of XML
     content_type = resp.headers.get("Content-Type", "")
-    if "text/html" in content_type and "news.google.com" in source.get("url", ""):
-        raise ValueError("Google News returned HTML instead of RSS (likely IP-blocked or consent page)")
+    if "text/html" in content_type and source.get("source_type") == "rss":
+        raise ValueError(f"Source returned HTML instead of RSS/XML (Content-Type: {content_type})")
 
     items = []
 

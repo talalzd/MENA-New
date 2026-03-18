@@ -63,7 +63,24 @@ def init_db():
     c.execute("CREATE INDEX IF NOT EXISTS idx_updates_starred ON updates(is_starred)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_updates_read ON updates(is_read)")
 
-    # Pre-populate sources
+    # Deactivate broken sources (unreachable gov sites & dead SPA RSS)
+    broken_urls = [
+        "https://istitlaa.ncc.gov.sa/ar/Pages/default.aspx",
+        "https://u.ae/en/participate/consultations",
+        "https://tdra.gov.ae/en/Participation/consultations",
+        "https://uaelegislation.gov.ae/en",
+        "https://www.errada.gov.eg/",
+        "https://www.egypt.gov.eg/english/laws/default.aspx",
+        "https://www.tra.gov.eg/en/",
+        "https://www.spa.gov.sa/rss.xml",
+        "https://www.spa.gov.sa/rss5.xml",
+        "https://www.spa.gov.sa/rss4.xml",
+        "https://www.arabnews.com/rss.xml",
+    ]
+    for url in broken_urls:
+        c.execute("UPDATE sources SET active = 0 WHERE url = ?", (url,))
+
+    # Pre-populate sources (inserts new ones, skips existing)
     for src in config.DEFAULT_SOURCES:
         c.execute("""
             INSERT OR IGNORE INTO sources (name, url, source_type, country, default_topic)
