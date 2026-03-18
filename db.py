@@ -139,12 +139,12 @@ def get_updates(country=None, topic=None, consultations_only=False,
     if unread_only:
         query += " AND is_read = 0"
 
-    query += " ORDER BY fetched_at DESC LIMIT ?"
+    query += " ORDER BY published_date DESC, fetched_at DESC LIMIT ?"
     params.append(limit)
 
     rows = conn.execute(query, params).fetchall()
     conn.close()
-    return rows
+    return [dict(row) for row in rows]
 
 
 def get_consultations():
@@ -166,7 +166,7 @@ def get_consultations():
         ORDER BY is_expired ASC, days_remaining ASC
     """).fetchall()
     conn.close()
-    return rows
+    return [dict(row) for row in rows]
 
 
 def toggle_star(update_id):

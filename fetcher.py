@@ -209,6 +209,10 @@ def fetch_rss(source):
         country = _detect_country(title, summary, source["country"])
         is_consultation = detect_consultation(title, summary, source["name"])
 
+        # Skip items with no detected topic — keeps feed focused on regulation/policy
+        if not topic and not is_consultation:
+            continue
+
         items.append({
             "title": title,
             "url": link,
@@ -463,21 +467,33 @@ def detect_consultation(title, summary, source_name):
 # ---------- Helpers ----------
 
 def _detect_country(title, summary, source_country):
-    """Try to detect country from text; fall back to source's country."""
-    if source_country:
-        return source_country
-
+    """Detect country from article text; fall back to source's country."""
     text = f"{title} {summary or ''}".lower()
+
+    # Check article content first for explicit country mentions
+    detected = []
     for country in config.COUNTRIES:
         if country.lower() in text:
-            return country
-        # Check common aliases
-        if country == "UAE" and "emirates" in text:
-            return "UAE"
-        if country == "Saudi Arabia" and "saudi" in text:
-            return "Saudi Arabia"
+            detected.append(country)
+        elif country == "UAE" and "emirates" in text:
+            detected.append("UAE")
+        elif country == "Saudi Arabia" and "saudi" in text:
+            detected.append("Saudi Arabia")
 
-    return None
+    # If exactly one country mentioned in text, use it (even if source says otherwise)
+    if len(detected) == 1:
+        return detected[0]
+
+    # If multiple countries detected, prefer the source's country if it's among them
+    if len(detected) > 1 and source_country in detected:
+        return source_country
+
+    # If no country detected in text, fall back to source's country
+    if not detected:
+        return source_country
+
+    # Multiple countries, source country not among them — return first match
+    return detected[0]
 
 
 def _xml_text(el, tag, ns):
