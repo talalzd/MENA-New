@@ -202,7 +202,7 @@ def get_sources(active_only=False):
     query += " ORDER BY country, name"
     rows = conn.execute(query).fetchall()
     conn.close()
-    return rows
+    return [dict(row) for row in rows]
 
 
 def toggle_source(source_id):
