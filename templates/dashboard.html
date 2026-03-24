@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - MENA Policy Monitor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">MENA regulatory landscape at a glance</p>
+    </div>
+    <button class="btn btn-primary" id="refresh-btn" onclick="refreshFeeds()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+        </svg>
+        Refresh Feeds
+    </button>
+</div>
+
+<div id="refresh-status" class="refresh-status" style="display:none;"></div>
+
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">Total Updates</div>
+        <div class="stat-value">{{ stats.total }}</div>
+        <div class="stat-detail">{{ stats.unread }} unread</div>
+    </div>
+    <div class="stat-card stat-card-accent">
+        <div class="stat-label">Active Consultations</div>
+        <div class="stat-value">{{ stats.consultations_active }}</div>
+        <div class="stat-detail">Across {{ stats.by_country|length }} countries</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Starred</div>
+        <div class="stat-value">{{ stats.starred }}</div>
+        <div class="stat-detail">Briefing items</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Active Sources</div>
+        <div class="stat-value">{{ stats.active_sources }}</div>
+        <div class="stat-detail">Monitoring feeds</div>
+    </div>
+</div>
+
+<!-- Country Breakdown + Activity -->
+<div class="dashboard-grid">
+    <!-- Country Breakdown -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Coverage by Country</h2>
+        </div>
+        <div class="card-body">
+            {% for country in countries %}
+            {% set cnt = stats.by_country.get(country, 0) %}
+            {% set pct = (cnt / stats.total * 100) if stats.total > 0 else 0 %}
+            <div class="country-row">
+                <div class="country-info">
+                    <span class="country-flag">{{ country_flags.get(country, '') }}</span>
+                    <span class="country-name">{{ country }}</span>
+                    <span class="country-count">{{ cnt }}</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill country-fill-{{ loop.index }}" style="width: {{ pct }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Topic Distribution -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Topics Tracked</h2>
+        </div>
+        <div class="card-body">
+            {% for topic in topics %}
+            {% set cnt = stats.by_topic.get(topic, 0) %}
+            <div class="topic-row">
+                <span class="topic-name">{{ topic }}</span>
+                <span class="topic-count-badge">{{ cnt }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Recent Updates + Active Consultations -->
+<div class="dashboard-grid">
+    <!-- Recent Updates -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Latest Updates</h2>
+            <a href="{{ url_for('feed') }}" class="card-link">View all &rarr;</a>
+        </div>
+        <div class="card-body card-body-flush">
+            {% if recent %}
+            {% for u in recent %}
+            <a href="{{ u.url }}" target="_blank" rel="noopener" class="recent-item" onclick="markRead({{ u.id }})">
+                <div class="recent-item-top">
+                    <span class="recent-title {% if not u.is_read %}font-semibold{% endif %}" dir="auto">{{ u.title }}</span>
+                </div>
+                <div class="recent-meta">
+                    {% if u.country %}
+                    <span class="mini-tag country-mini">{{ country_flags.get(u.country, '') }} {{ u.country }}</span>
+                    {% endif %}
+                    {% if u.topic %}
+                    <span class="mini-tag topic-mini">{{ u.topic }}</span>
+                    {% endif %}
+                    <span class="recent-date">{{ u.published_date|timeago }}</span>
+                </div>
+            </a>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state-sm">No updates yet. Click Refresh Feeds to start.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Active Consultations -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Open Consultations</h2>
+            <a href="{{ url_for('consultations') }}" class="card-link">View all &rarr;</a>
+        </div>
+        <div class="card-body card-body-flush">
+            {% if active_consultations %}
+            {% for c in active_consultations %}
+            <a href="{{ c.url }}" target="_blank" rel="noopener" class="consultation-item">
+                <div class="consultation-item-title" dir="auto">{{ c.title }}</div>
+                <div class="consultation-item-meta">
+                    {% if c.country %}
+                    <span class="mini-tag country-mini">{{ country_flags.get(c.country, '') }} {{ c.country }}</span>
+                    {% endif %}
+                    {% if c.consultation_deadline %}
+                    <span class="mini-tag deadline-mini">{{ c.consultation_deadline|daysuntil }}</span>
+                    {% endif %}
+                </div>
+            </a>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state-sm">No active consultations found.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function refreshFeeds() {
+    const btn = document.getElementById('refresh-btn');
+    const status = document.getElementById('refresh-status');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Refreshing...';
+    status.style.display = 'block';
+    status.textContent = 'Fetching from all sources...';
+    status.className = 'refresh-status';
+
+    fetch('/api/refresh', {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            if (data.started === false) {
+                status.textContent = data.message;
+                btn.innerHTML = 'Refresh Feeds';
+                btn.disabled = false;
+                return;
+            }
+            pollRefreshStatus();
+        })
+        .catch(err => {
+            status.textContent = 'Refresh failed: ' + err.message;
+            status.className = 'refresh-status refresh-error';
+            btn.innerHTML = 'Refresh Feeds';
+            btn.disabled = false;
+        });
+}
+
+function pollRefreshStatus() {
+    const btn = document.getElementById('refresh-btn');
+    const status = document.getElementById('refresh-status');
+
+    fetch('/api/refresh/status')
+        .then(r => r.json())
+        .then(data => {
+            if (data.running) {
+                status.textContent = data.progress || 'Working...';
+                setTimeout(pollRefreshStatus, 2000);
+            } else if (data.result) {
+                const res = data.result;
+                let msg = `Done! ${res.new} new updates found (${res.fetched} items checked).`;
+                if (res.errors && res.errors.length > 0) {
+                    msg += ` ${res.errors.length} source(s) had errors.`;
+                }
+                status.textContent = msg;
+                status.className = res.new > 0 ? 'refresh-status refresh-success' : 'refresh-status refresh-warn';
+                btn.innerHTML = 'Refresh Feeds';
+                btn.disabled = false;
+                if (res.new > 0) setTimeout(() => location.reload(), 1500);
+            } else {
+                status.textContent = 'Refresh complete.';
+                status.className = 'refresh-status refresh-success';
+                btn.innerHTML = 'Refresh Feeds';
+                btn.disabled = false;
+            }
+        })
+        .catch(() => setTimeout(pollRefreshStatus, 3000));
+}
+
+function markRead(id) {
+    fetch('/api/read/' + id, {method: 'POST'});
+}
+</script>
+{% endblock %}

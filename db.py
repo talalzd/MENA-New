@@ -258,3 +258,59 @@ def get_update_count():
     row = conn.execute("SELECT COUNT(*) as cnt FROM updates").fetchone()
     conn.close()
     return row["cnt"]
+
+
+def get_dashboard_stats():
+    """Return aggregate stats for the dashboard."""
+    conn = get_conn()
+
+    total = conn.execute("SELECT COUNT(*) as cnt FROM updates").fetchone()["cnt"]
+    unread = conn.execute("SELECT COUNT(*) as cnt FROM updates WHERE is_read = 0").fetchone()["cnt"]
+    starred = conn.execute("SELECT COUNT(*) as cnt FROM updates WHERE is_starred = 1").fetchone()["cnt"]
+    consultations_active = conn.execute("""
+        SELECT COUNT(*) as cnt FROM updates
+        WHERE is_consultation = 1
+          AND (consultation_deadline IS NULL OR consultation_deadline >= date('now'))
+    """).fetchone()["cnt"]
+
+    # Per-country counts
+    country_rows = conn.execute("""
+        SELECT country, COUNT(*) as cnt FROM updates
+        WHERE country IS NOT NULL
+        GROUP BY country ORDER BY cnt DESC
+    """).fetchall()
+    by_country = {r["country"]: r["cnt"] for r in country_rows}
+
+    # Per-topic counts
+    topic_rows = conn.execute("""
+        SELECT topic, COUNT(*) as cnt FROM updates
+        WHERE topic IS NOT NULL
+        GROUP BY topic ORDER BY cnt DESC
+    """).fetchall()
+    by_topic = {r["topic"]: r["cnt"] for r in topic_rows}
+
+    # Recent activity — updates per day for last 14 days
+    activity_rows = conn.execute("""
+        SELECT date(published_date) as day, COUNT(*) as cnt
+        FROM updates
+        WHERE published_date >= date('now', '-14 days')
+        GROUP BY day ORDER BY day ASC
+    """).fetchall()
+    activity = [{"day": r["day"], "count": r["cnt"]} for r in activity_rows]
+
+    # Active sources
+    active_sources = conn.execute(
+        "SELECT COUNT(*) as cnt FROM sources WHERE active = 1"
+    ).fetchone()["cnt"]
+
+    conn.close()
+    return {
+        "total": total,
+        "unread": unread,
+        "starred": starred,
+        "consultations_active": consultations_active,
+        "by_country": by_country,
+        "by_topic": by_topic,
+        "activity": activity,
+        "active_sources": active_sources,
+    }

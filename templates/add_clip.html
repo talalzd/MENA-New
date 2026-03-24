@@ -2,79 +2,85 @@
 {% block title %}Add Clip - MENA Policy Monitor{% endblock %}
 
 {% block content %}
-<h2>Add Manual Clip</h2>
-<p>Paste a URL you found while browsing government portals, news sites, or social media.</p>
-
-<form method="post" action="{{ url_for('add_clip') }}">
-    <div class="grid">
-        <label>
-            URL <span class="required">*</span>
-            <input type="url" name="url" value="{{ data.get('url', '') }}" required
-                   placeholder="https://...">
-        </label>
-        <label>
-            Title <span class="required">*</span>
-            <input type="text" name="title" value="{{ data.get('title', '') }}" required dir="auto"
-                   placeholder="Title of the article or consultation">
-        </label>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Add Clip</h1>
+        <p class="page-subtitle">Manually add a URL from government portals, news sites, or social media</p>
     </div>
+</div>
 
-    <div class="grid">
-        <label>
-            Country
-            <select name="country">
-                <option value="">-- Select --</option>
-                {% for c in countries %}
-                <option value="{{ c }}" {% if data.get('country') == c %}selected{% endif %}>
-                    {{ country_flags.get(c, '') }} {{ c }}
-                </option>
-                {% endfor %}
-            </select>
-        </label>
-        <label>
-            Topic
-            <select name="topic">
-                <option value="">-- Select --</option>
-                {% for t in topics %}
-                <option value="{{ t }}" {% if data.get('topic') == t %}selected{% endif %}>{{ t }}</option>
-                {% endfor %}
-            </select>
-        </label>
-    </div>
+<div class="card">
+    <div class="card-body">
+        <form method="post" action="{{ url_for('add_clip') }}" class="form-grid">
+            <div class="form-row">
+                <label class="form-label">
+                    URL <span class="required">*</span>
+                    <input type="url" name="url" value="{{ data.get('url', '') }}" required
+                           placeholder="https://..." class="form-input">
+                </label>
+                <label class="form-label">
+                    Title <span class="required">*</span>
+                    <input type="text" name="title" value="{{ data.get('title', '') }}" required dir="auto"
+                           placeholder="Title of the article or consultation" class="form-input">
+                </label>
+            </div>
 
-    <label>
-        Summary
-        <textarea name="summary" rows="3" dir="auto"
-                  placeholder="Brief description or key points">{{ data.get('summary', '') }}</textarea>
-    </label>
+            <div class="form-row">
+                <label class="form-label">
+                    Country
+                    <select name="country" class="form-input">
+                        <option value="">-- Select --</option>
+                        {% for c in countries %}
+                        <option value="{{ c }}" {% if data.get('country') == c %}selected{% endif %}>
+                            {{ country_flags.get(c, '') }} {{ c }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label class="form-label">
+                    Topic
+                    <select name="topic" class="form-input">
+                        <option value="">-- Select --</option>
+                        {% for t in topics %}
+                        <option value="{{ t }}" {% if data.get('topic') == t %}selected{% endif %}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
 
-    <fieldset>
-        <label>
-            <input type="checkbox" name="is_consultation" id="is_consultation"
-                   {% if data.get('is_consultation') %}checked{% endif %}
-                   onchange="toggleConsultationFields()">
-            This is a consultation / public comment opportunity
-        </label>
-    </fieldset>
-
-    <div id="consultation-fields" style="display:none;">
-        <div class="grid">
-            <label>
-                Consultation Deadline
-                <input type="date" name="consultation_deadline"
-                       value="{{ data.get('consultation_deadline', '') }}">
+            <label class="form-label">
+                Summary
+                <textarea name="summary" rows="3" dir="auto" class="form-input"
+                          placeholder="Brief description or key points">{{ data.get('summary', '') }}</textarea>
             </label>
-            <label>
-                Issuing Authority
-                <input type="text" name="issuing_authority"
-                       value="{{ data.get('issuing_authority', '') }}"
-                       placeholder="e.g., NCC, TDRA, NTRA">
-            </label>
-        </div>
-    </div>
 
-    <button type="submit">Save Clip</button>
-</form>
+            <label class="checkbox-label">
+                <input type="checkbox" name="is_consultation" id="is_consultation"
+                       {% if data.get('is_consultation') %}checked{% endif %}
+                       onchange="toggleConsultationFields()">
+                <span>This is a consultation / public comment opportunity</span>
+            </label>
+
+            <div id="consultation-fields" class="consultation-fields" style="display:none;">
+                <div class="form-row">
+                    <label class="form-label">
+                        Consultation Deadline
+                        <input type="date" name="consultation_deadline"
+                               value="{{ data.get('consultation_deadline', '') }}" class="form-input">
+                    </label>
+                    <label class="form-label">
+                        Issuing Authority
+                        <input type="text" name="issuing_authority"
+                               value="{{ data.get('issuing_authority', '') }}"
+                               placeholder="e.g., NCC, TDRA, NTRA" class="form-input">
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Save Clip</button>
+        </form>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -84,7 +90,6 @@ function toggleConsultationFields() {
     const fields = document.getElementById('consultation-fields');
     fields.style.display = cb.checked ? 'block' : 'none';
 }
-// Initialize on page load
 toggleConsultationFields();
 </script>
 {% endblock %}

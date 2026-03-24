@@ -38,24 +38,48 @@ def inject_globals():
 # ---------- Pages ----------
 
 @app.route("/")
+def dashboard():
+    stats = db.get_dashboard_stats()
+    recent = db.get_updates(limit=5)
+    consultations = db.get_consultations()
+    active_consultations = [c for c in consultations if not c["is_expired"]][:5]
+    return render_template("dashboard.html",
+                           stats=stats,
+                           recent=recent,
+                           active_consultations=active_consultations)
+
+
+@app.route("/feed")
 def feed():
     country = request.args.get("country")
     topic = request.args.get("topic")
     unread_only = request.args.get("unread") == "1"
+    search = request.args.get("q", "").strip()
     updates = db.get_updates(country=country, topic=topic, unread_only=unread_only)
+    # Client-side search — filter by title/summary containing the query
+    if search:
+        q = search.lower()
+        updates = [u for u in updates if q in (u["title"] or "").lower()
+                   or q in (u["summary"] or "").lower()]
     return render_template("feed.html",
                            updates=updates,
                            selected_country=country,
                            selected_topic=topic,
-                           unread_filter=unread_only)
+                           unread_filter=unread_only,
+                           search_query=search)
 
 
 @app.route("/consultations")
 def consultations():
     items = db.get_consultations()
+    country = request.args.get("country")
+    if country:
+        items = [i for i in items if i["country"] == country]
     active = [i for i in items if not i["is_expired"]]
     expired = [i for i in items if i["is_expired"]]
-    return render_template("consultations.html", active=active, expired=expired)
+    return render_template("consultations.html",
+                           active=active, expired=expired,
+                           selected_country=country)
 
 
 @app.route("/starred")
@@ -123,6 +147,12 @@ def sources_toggle(source_id):
 
 
 # ---------- API ----------
+
+@app.route("/api/stats")
+def api_stats():
+    """Dashboard stats as JSON (for AJAX refresh)."""
+    return jsonify(db.get_dashboard_stats())
+
 
 @app.route("/api/refresh", methods=["POST"])
 def api_refresh():
@@ -241,6 +271,19 @@ def daysuntil_filter(date_str):
         return f"{diff} days remaining"
     except Exception:
         return ""
+
+
+@app.template_filter("shortdate")
+def shortdate_filter(dt_str):
+    """Format ISO date as short date like 'Mar 24'."""
+    if not dt_str:
+        return ""
+    try:
+        from dateutil import parser as dp
+        dt = dp.parse(dt_str)
+        return dt.strftime("%b %d")
+    except Exception:
+        return dt_str[:10] if dt_str else ""
 
 
 if __name__ == "__main__":

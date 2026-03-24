@@ -2,76 +2,117 @@
 {% block title %}Feed - MENA Policy Monitor{% endblock %}
 
 {% block content %}
-<div class="filter-bar">
-    <form method="get" action="{{ url_for('feed') }}" class="filter-form">
-        <select name="country" aria-label="Country">
-            <option value="">All Countries</option>
-            {% for c in countries %}
-            <option value="{{ c }}" {% if selected_country == c %}selected{% endif %}>
-                {{ country_flags.get(c, '') }} {{ c }}
-            </option>
-            {% endfor %}
-        </select>
-
-        <select name="topic" aria-label="Topic">
-            <option value="">All Topics</option>
-            {% for t in topics %}
-            <option value="{{ t }}" {% if selected_topic == t %}selected{% endif %}>{{ t }}</option>
-            {% endfor %}
-        </select>
-
-        <label class="filter-checkbox">
-            <input type="checkbox" name="unread" value="1" {% if unread_filter %}checked{% endif %}>
-            Unread only
-        </label>
-
-        <button type="submit" class="outline">Filter</button>
-        <button type="button" id="refresh-btn" class="contrast" onclick="refreshFeeds()">Refresh Feeds</button>
-    </form>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Feed</h1>
+        <p class="page-subtitle">{{ updates|length }} updates shown &middot; {{ unread_count }} unread</p>
+    </div>
+    <button class="btn btn-primary" id="refresh-btn" onclick="refreshFeeds()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+        </svg>
+        Refresh
+    </button>
 </div>
 
 <div id="refresh-status" class="refresh-status" style="display:none;"></div>
 
-<p class="update-count">{{ updates|length }} updates shown &middot; {{ unread_count }} unread total</p>
+<!-- Filters -->
+<div class="filter-bar">
+    <form method="get" action="{{ url_for('feed') }}" class="filter-form" id="filter-form">
+        <div class="filter-group">
+            <input type="search" name="q" value="{{ search_query or '' }}" placeholder="Search updates..."
+                   class="search-input" autocomplete="off">
+        </div>
+        <div class="filter-group">
+            <select name="country" onchange="this.form.submit()">
+                <option value="">All Countries</option>
+                {% for c in countries %}
+                <option value="{{ c }}" {% if selected_country == c %}selected{% endif %}>
+                    {{ country_flags.get(c, '') }} {{ c }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <select name="topic" onchange="this.form.submit()">
+                <option value="">All Topics</option>
+                {% for t in topics %}
+                <option value="{{ t }}" {% if selected_topic == t %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="checkbox-label">
+                <input type="checkbox" name="unread" value="1"
+                       {% if unread_filter %}checked{% endif %}
+                       onchange="this.form.submit()">
+                <span>Unread only</span>
+            </label>
+        </div>
+        <button type="submit" class="btn btn-outline btn-sm">Filter</button>
+        {% if selected_country or selected_topic or unread_filter or search_query %}
+        <a href="{{ url_for('feed') }}" class="btn btn-ghost btn-sm">Clear</a>
+        {% endif %}
+    </form>
+</div>
 
 {% if updates %}
 <div class="updates-list">
     {% for u in updates %}
     <article class="update-card {% if not u.is_read %}unread{% endif %}" id="update-{{ u.id }}">
-        <div class="update-header">
-            <a href="{{ u.url }}" target="_blank" rel="noopener" dir="auto" class="update-title"
-               onclick="markRead({{ u.id }})">{{ u.title }}</a>
-            <div class="update-actions">
-                <button class="btn-icon star-btn {% if u.is_starred %}starred{% endif %}"
-                        onclick="toggleStar({{ u.id }}, this)" title="Star">
-                    {{ '&#9733;' if u.is_starred else '&#9734;' }}
-                </button>
-                <button class="btn-icon read-btn" onclick="toggleRead({{ u.id }}, this)" title="Toggle read">
-                    {{ '&#9679;' if not u.is_read else '&#9675;' }}
-                </button>
+        <div class="update-left">
+            {% if not u.is_read %}<div class="unread-dot"></div>{% endif %}
+        </div>
+        <div class="update-body">
+            <div class="update-header">
+                <a href="{{ u.url }}" target="_blank" rel="noopener" dir="auto" class="update-title"
+                   onclick="markRead({{ u.id }})">{{ u.title }}</a>
+                <div class="update-actions">
+                    <button class="btn-icon star-btn {% if u.is_starred %}starred{% endif %}"
+                            onclick="toggleStar({{ u.id }}, this)" title="Star">
+                        <svg width="16" height="16" fill="{% if u.is_starred %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                    </button>
+                    <button class="btn-icon" onclick="toggleRead({{ u.id }}, this)" title="Toggle read">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            {% if not u.is_read %}
+                            <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor"/>
+                            {% else %}
+                            <circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/>
+                            {% endif %}
+                        </svg>
+                    </button>
+                </div>
             </div>
+            <div class="update-meta">
+                <span class="meta-tag source-tag">{{ u.source_name }}</span>
+                {% if u.country %}
+                <span class="meta-tag country-tag">{{ country_flags.get(u.country, '') }} {{ u.country }}</span>
+                {% endif %}
+                {% if u.topic %}
+                <span class="meta-tag topic-tag">{{ u.topic }}</span>
+                {% endif %}
+                {% if u.is_consultation %}
+                <span class="meta-tag consultation-tag">CONSULTATION</span>
+                {% endif %}
+                <span class="update-date">{{ u.published_date|timeago }}</span>
+            </div>
+            {% if u.summary %}
+            <p class="update-summary" dir="auto">{{ u.summary[:250] }}{% if u.summary|length > 250 %}...{% endif %}</p>
+            {% endif %}
         </div>
-        <div class="update-meta">
-            <span class="tag source-tag">{{ u.source_name }}</span>
-            {% if u.country %}
-            <span class="tag country-tag">{{ country_flags.get(u.country, '') }} {{ u.country }}</span>
-            {% endif %}
-            {% if u.topic %}
-            <span class="tag topic-tag">{{ u.topic }}</span>
-            {% endif %}
-            {% if u.is_consultation %}
-            <span class="tag consultation-tag">CONSULTATION</span>
-            {% endif %}
-            <span class="update-date">{{ u.published_date|timeago }}</span>
-        </div>
-        {% if u.summary %}
-        <p class="update-summary" dir="auto">{{ u.summary[:200] }}{% if u.summary|length > 200 %}...{% endif %}</p>
-        {% endif %}
     </article>
     {% endfor %}
 </div>
 {% else %}
-<p>No updates found. Try adjusting filters or click <strong>Refresh Feeds</strong> to fetch new content.</p>
+<div class="empty-state">
+    <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" opacity="0.4">
+        <path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2"/>
+    </svg>
+    <p>No updates found. Try adjusting filters or click <strong>Refresh</strong>.</p>
+</div>
 {% endif %}
 {% endblock %}
 
@@ -81,8 +122,7 @@ function refreshFeeds() {
     const btn = document.getElementById('refresh-btn');
     const status = document.getElementById('refresh-status');
     btn.disabled = true;
-    btn.textContent = 'Refreshing...';
-    btn.setAttribute('aria-busy', 'true');
+    btn.innerHTML = '<span class="spinner"></span> Refreshing...';
     status.style.display = 'block';
     status.textContent = 'Fetching from all sources...';
     status.className = 'refresh-status';
@@ -92,10 +132,8 @@ function refreshFeeds() {
         .then(data => {
             if (data.started === false) {
                 status.textContent = data.message;
-                status.className = 'refresh-status';
-                btn.textContent = 'Refresh Feeds';
+                btn.innerHTML = 'Refresh';
                 btn.disabled = false;
-                btn.removeAttribute('aria-busy');
                 return;
             }
             pollRefreshStatus();
@@ -103,9 +141,8 @@ function refreshFeeds() {
         .catch(err => {
             status.textContent = 'Refresh failed: ' + err.message;
             status.className = 'refresh-status refresh-error';
-            btn.textContent = 'Refresh Feeds';
+            btn.innerHTML = 'Refresh';
             btn.disabled = false;
-            btn.removeAttribute('aria-busy');
         });
 }
 
@@ -124,37 +161,28 @@ function pollRefreshStatus() {
                 let msg = `Done! ${res.new} new updates found (${res.fetched} items checked).`;
                 if (res.errors && res.errors.length > 0) {
                     msg += ` ${res.errors.length} source(s) had errors.`;
-                    msg += `\n\nError details:\n` + res.errors.join('\n');
                 }
                 status.textContent = msg;
-                status.style.whiteSpace = 'pre-wrap';
-                status.className = res.errors && res.errors.length > 0 && res.fetched === 0
-                    ? 'refresh-status refresh-error'
-                    : 'refresh-status refresh-success';
-                btn.textContent = 'Refresh Feeds';
+                status.className = res.new > 0 ? 'refresh-status refresh-success' : 'refresh-status refresh-warn';
+                btn.innerHTML = 'Refresh';
                 btn.disabled = false;
-                btn.removeAttribute('aria-busy');
-                if (res.new > 0) {
-                    setTimeout(() => location.reload(), 1500);
-                }
+                if (res.new > 0) setTimeout(() => location.reload(), 1500);
             } else {
                 status.textContent = 'Refresh complete.';
                 status.className = 'refresh-status refresh-success';
-                btn.textContent = 'Refresh Feeds';
+                btn.innerHTML = 'Refresh';
                 btn.disabled = false;
-                btn.removeAttribute('aria-busy');
             }
         })
-        .catch(() => {
-            setTimeout(pollRefreshStatus, 3000);
-        });
+        .catch(() => setTimeout(pollRefreshStatus, 3000));
 }
 
 function toggleStar(id, btn) {
     fetch('/api/star/' + id, {method: 'POST'})
         .then(r => r.json())
         .then(data => {
-            btn.innerHTML = data.is_starred ? '&#9733;' : '&#9734;';
+            const svg = btn.querySelector('svg');
+            svg.setAttribute('fill', data.is_starred ? 'currentColor' : 'none');
             btn.classList.toggle('starred', data.is_starred);
         });
 }
@@ -163,16 +191,21 @@ function toggleRead(id, btn) {
     fetch('/api/read/' + id, {method: 'POST'})
         .then(r => r.json())
         .then(data => {
-            btn.innerHTML = data.is_read ? '&#9675;' : '&#9679;';
             const card = document.getElementById('update-' + id);
             card.classList.toggle('unread', !data.is_read);
+            const dot = card.querySelector('.unread-dot');
+            if (dot) dot.style.display = data.is_read ? 'none' : 'block';
         });
 }
 
 function markRead(id) {
     fetch('/api/read/' + id, {method: 'POST'});
     const card = document.getElementById('update-' + id);
-    if (card) card.classList.remove('unread');
+    if (card) {
+        card.classList.remove('unread');
+        const dot = card.querySelector('.unread-dot');
+        if (dot) dot.style.display = 'none';
+    }
 }
 </script>
 {% endblock %}

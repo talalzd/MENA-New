@@ -2,63 +2,104 @@
 {% block title %}Consultations - MENA Policy Monitor{% endblock %}
 
 {% block content %}
-<h2>Active Consultations</h2>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Consultations</h1>
+        <p class="page-subtitle">Public consultations and regulatory comment periods</p>
+    </div>
+</div>
+
+<!-- Country filter tabs -->
+<div class="tab-bar">
+    <a href="{{ url_for('consultations') }}" class="tab {% if not selected_country %}active{% endif %}">All</a>
+    {% for c in countries %}
+    <a href="{{ url_for('consultations', country=c) }}" class="tab {% if selected_country == c %}active{% endif %}">
+        {{ country_flags.get(c, '') }} {{ c }}
+    </a>
+    {% endfor %}
+</div>
 
 {% if active %}
+<div class="section-label">
+    <span class="section-dot active-dot"></span>
+    Active ({{ active|length }})
+</div>
 <div class="updates-list">
     {% for u in active %}
-    <article class="update-card consultation-card">
-        <div class="update-header">
-            <a href="{{ u.url }}" target="_blank" rel="noopener" dir="auto" class="update-title">{{ u.title }}</a>
-            <div class="update-actions">
-                <button class="btn-icon star-btn {% if u.is_starred %}starred{% endif %}"
-                        onclick="toggleStar({{ u.id }}, this)">
-                    {{ '&#9733;' if u.is_starred else '&#9734;' }}
-                </button>
+    <article class="update-card consultation-active-card">
+        <div class="update-left">
+            <div class="consultation-status-dot active-dot"></div>
+        </div>
+        <div class="update-body">
+            <div class="update-header">
+                <a href="{{ u.url }}" target="_blank" rel="noopener" dir="auto" class="update-title">{{ u.title }}</a>
+                <div class="update-actions">
+                    <button class="btn-icon star-btn {% if u.is_starred %}starred{% endif %}"
+                            onclick="toggleStar({{ u.id }}, this)">
+                        <svg width="16" height="16" fill="{% if u.is_starred %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
-        </div>
-        <div class="update-meta">
-            <span class="tag source-tag">{{ u.source_name }}</span>
-            {% if u.country %}
-            <span class="tag country-tag">{{ country_flags.get(u.country, '') }} {{ u.country }}</span>
+            <div class="update-meta">
+                <span class="meta-tag source-tag">{{ u.source_name }}</span>
+                {% if u.country %}
+                <span class="meta-tag country-tag">{{ country_flags.get(u.country, '') }} {{ u.country }}</span>
+                {% endif %}
+                {% if u.issuing_authority %}
+                <span class="meta-tag">{{ u.issuing_authority }}</span>
+                {% endif %}
+            </div>
+            {% if u.consultation_deadline %}
+            <div class="deadline-bar">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                </svg>
+                <span>Deadline: <strong>{{ u.consultation_deadline }}</strong></span>
+                <span class="deadline-badge">{{ u.consultation_deadline|daysuntil }}</span>
+            </div>
             {% endif %}
-            {% if u.issuing_authority %}
-            <span class="tag">{{ u.issuing_authority }}</span>
+            {% if u.summary %}
+            <p class="update-summary" dir="auto">{{ u.summary[:300] }}</p>
             {% endif %}
-            <span class="tag consultation-tag">CONSULTATION</span>
         </div>
-        {% if u.consultation_deadline %}
-        <div class="deadline-info">
-            <strong>Deadline:</strong> {{ u.consultation_deadline }}
-            <span class="deadline-countdown">({{ u.consultation_deadline|daysuntil }})</span>
-        </div>
-        {% endif %}
-        {% if u.summary %}
-        <p class="update-summary" dir="auto">{{ u.summary[:300] }}</p>
-        {% endif %}
     </article>
     {% endfor %}
 </div>
 {% else %}
-<p>No active consultations found. Use <a href="{{ url_for('add_clip') }}">Add Clip</a> to manually add consultations you find.</p>
+<div class="empty-state">
+    <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" opacity="0.4">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+    </svg>
+    <p>No active consultations. Use <a href="{{ url_for('add_clip') }}">Add Clip</a> to add ones you find.</p>
+</div>
 {% endif %}
 
 {% if expired %}
-<h2>Expired</h2>
+<div class="section-label" style="margin-top: 2rem;">
+    <span class="section-dot expired-dot"></span>
+    Expired ({{ expired|length }})
+</div>
 <div class="updates-list expired-section">
     {% for u in expired %}
-    <article class="update-card consultation-card expired">
-        <div class="update-header">
-            <a href="{{ u.url }}" target="_blank" rel="noopener" dir="auto" class="update-title">{{ u.title }}</a>
+    <article class="update-card consultation-expired-card">
+        <div class="update-left">
+            <div class="consultation-status-dot expired-dot"></div>
         </div>
-        <div class="update-meta">
-            <span class="tag source-tag">{{ u.source_name }}</span>
-            {% if u.country %}
-            <span class="tag country-tag">{{ country_flags.get(u.country, '') }} {{ u.country }}</span>
-            {% endif %}
-            {% if u.consultation_deadline %}
-            <span class="tag expired-tag">Expired {{ u.consultation_deadline }}</span>
-            {% endif %}
+        <div class="update-body">
+            <div class="update-header">
+                <a href="{{ u.url }}" target="_blank" rel="noopener" dir="auto" class="update-title">{{ u.title }}</a>
+            </div>
+            <div class="update-meta">
+                <span class="meta-tag source-tag">{{ u.source_name }}</span>
+                {% if u.country %}
+                <span class="meta-tag country-tag">{{ country_flags.get(u.country, '') }} {{ u.country }}</span>
+                {% endif %}
+                {% if u.consultation_deadline %}
+                <span class="meta-tag expired-tag">Expired {{ u.consultation_deadline }}</span>
+                {% endif %}
+            </div>
         </div>
     </article>
     {% endfor %}
@@ -72,7 +113,8 @@ function toggleStar(id, btn) {
     fetch('/api/star/' + id, {method: 'POST'})
         .then(r => r.json())
         .then(data => {
-            btn.innerHTML = data.is_starred ? '&#9733;' : '&#9734;';
+            const svg = btn.querySelector('svg');
+            svg.setAttribute('fill', data.is_starred ? 'currentColor' : 'none');
             btn.classList.toggle('starred', data.is_starred);
         });
 }

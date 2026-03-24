@@ -1,46 +1,119 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr" data-theme="light">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}MENA Policy Monitor{% endblock %}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <header class="container">
-        <nav>
-            <ul>
-                <li><strong>MENA Policy Monitor</strong></li>
-            </ul>
-            <ul>
-                <li><a href="{{ url_for('feed') }}" {% if request.endpoint == 'feed' %}class="active"{% endif %}>
-                    Feed {% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}
-                </a></li>
-                <li><a href="{{ url_for('consultations') }}" {% if request.endpoint == 'consultations' %}class="active"{% endif %}>Consultations</a></li>
-                <li><a href="{{ url_for('starred') }}" {% if request.endpoint == 'starred' %}class="active"{% endif %}>Starred</a></li>
-                <li><a href="{{ url_for('add_clip') }}" {% if request.endpoint == 'add_clip' %}class="active"{% endif %}>Add Clip</a></li>
-                <li><a href="{{ url_for('sources') }}" {% if request.endpoint == 'sources' %}class="active"{% endif %}>Sources</a></li>
-                <li><button id="theme-toggle" class="outline secondary btn-sm" onclick="toggleTheme()">Dark</button></li>
-            </ul>
-        </nav>
-    </header>
+    <!-- Mobile top bar -->
+    <div class="mobile-bar">
+        <button class="mobile-menu-btn" onclick="toggleSidebar()" aria-label="Menu">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 6h14M3 10h14M3 14h14"/>
+            </svg>
+        </button>
+        <span class="mobile-title">MENA Policy Monitor</span>
+        <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle theme">
+            <svg class="icon-sun" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+            </svg>
+        </button>
+    </div>
 
-    <main class="container">
+    <!-- Sidebar overlay for mobile -->
+    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon">M</div>
+                <div>
+                    <div class="logo-text">MENA Monitor</div>
+                    <div class="logo-sub">Policy & Regulatory</div>
+                </div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-label">Overview</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="{{ url_for('feed') }}" class="nav-item {% if request.endpoint == 'feed' %}active{% endif %}">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2"/>
+                    </svg>
+                    Feed
+                    {% if unread_count %}<span class="nav-badge">{{ unread_count }}</span>{% endif %}
+                </a>
+                <a href="{{ url_for('consultations') }}" class="nav-item {% if request.endpoint == 'consultations' %}active{% endif %}">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    Consultations
+                </a>
+                <a href="{{ url_for('starred') }}" class="nav-item {% if request.endpoint == 'starred' %}active{% endif %}">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                    Starred
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-label">Manage</div>
+                <a href="{{ url_for('add_clip') }}" class="nav-item {% if request.endpoint == 'add_clip' %}active{% endif %}">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    Add Clip
+                </a>
+                <a href="{{ url_for('sources') }}" class="nav-item {% if request.endpoint == 'sources' %}active{% endif %}">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+                    </svg>
+                    Sources
+                </a>
+            </div>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button class="theme-btn-sidebar" onclick="toggleTheme()">
+                <svg class="icon-sun" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                </svg>
+                <span class="theme-label">Toggle theme</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main-content">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-        {% for category, message in messages %}
-        <div class="flash flash-{{ category }}" role="alert">{{ message }}</div>
-        {% endfor %}
+        <div class="flash-container">
+            {% for category, message in messages %}
+            <div class="flash flash-{{ category }}" role="alert">
+                {{ message }}
+                <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+            </div>
+            {% endfor %}
+        </div>
         {% endif %}
         {% endwith %}
 
         {% block content %}{% endblock %}
     </main>
-
-    <footer class="container">
-        <small>MENA Policy & Regulatory Monitor &mdash; Local-first, no external services</small>
-    </footer>
 
     <script>
         function toggleTheme() {
@@ -49,17 +122,23 @@
             const next = current === 'dark' ? 'light' : 'dark';
             html.setAttribute('data-theme', next);
             localStorage.setItem('theme', next);
-            document.getElementById('theme-toggle').textContent = next === 'dark' ? 'Light' : 'Dark';
         }
+
+        function toggleSidebar() {
+            document.body.classList.toggle('sidebar-open');
+        }
+
+        // Close sidebar on nav click (mobile)
+        document.querySelectorAll('.nav-item').forEach(a => {
+            a.addEventListener('click', () => {
+                document.body.classList.remove('sidebar-open');
+            });
+        });
 
         // Restore saved theme
         (function() {
             const saved = localStorage.getItem('theme');
-            if (saved) {
-                document.documentElement.setAttribute('data-theme', saved);
-                const btn = document.getElementById('theme-toggle');
-                if (btn) btn.textContent = saved === 'dark' ? 'Light' : 'Dark';
-            }
+            if (saved) document.documentElement.setAttribute('data-theme', saved);
         })();
     </script>
     {% block scripts %}{% endblock %}
